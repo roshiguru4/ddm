@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% block title %}Audio Details | DDM Hub{% endblock %}
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <h2 class="mb-2 animate__animated animate__fadeInDown">
+            <i class="fas fa-music me-3"></i>{{ audio.original_filename }}
+        </h2>
+        <p class="text-muted mb-0">
+            <i class="fas fa-calendar me-2"></i>Uploaded {{ audio.upload_date.strftime('%B %d, %Y at %I:%M %p') }}
+        </p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="/dashboard" class="btn btn-outline-light">
+            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="card p-4 mb-4 animate__animated animate__fadeInUp">
+    <h5 class="mb-3">
+        <i class="fas fa-play-circle me-2 text-primary"></i>Audio Player
+    </h5>
+    <audio id="audio-player" controls preload="metadata" class="w-100">
+        <source src="{{ url_for('download_audio', audio_id=audio.id) }}" type="audio/mpeg">
+        <source src="{{ url_for('download_audio', audio_id=audio.id) }}" type="audio/mp3">
+        Your browser does not support the audio element.
+    </audio>
+</div>
+
+<div class="row">
+    <div class="col-lg-6 mb-4">
+        <div class="card p-4 h-100 animate__animated animate__fadeInUp animate__delay-1s">
+            <h5 class="mb-4">
+                <i class="fas fa-redo me-2 text-success"></i>Loop Controls
+            </h5>
+            <form method="POST" action="{{ url_for('audio_detail', audio_id=audio.id) }}" class="mb-4">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Start Time (seconds)</label>
+                        <input type="number" step="0.01" class="form-control" name="start_time" placeholder="0.00" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">End Time (seconds)</label>
+                        <input type="number" step="0.01" class="form-control" name="end_time" placeholder="0.00" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Label (optional)</label>
+                    <input type="text" class="form-control" name="label" placeholder="e.g., Chorus, Verse, Bridge">
+                </div>
+                <button type="submit" class="btn btn-success w-100">
+                    <i class="fas fa-plus me-2"></i>Add Loop
+                </button>
+            </form>
+            
+            <h6 class="mb-3">
+                <i class="fas fa-list me-2"></i>Your Loops
+            </h6>
+            {% if loops %}
+                <div class="list-group">
+                    {% for audio_loop in loops %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ audio_loop.label or 'Loop' }}</strong>
+                            <br>
+                            <small class="text-muted">{{ audio_loop.start_time }}s - {{ audio_loop.end_time }}s</small>
+                        </div>
+                        <button data-start="{{ audio_loop.start_time }}" data-end="{{ audio_loop.end_time }}" 
+                                onclick="setLoop(this.dataset.start, this.dataset.end)" 
+                                class="btn btn-warning btn-sm">
+                            <i class="fas fa-play me-1"></i>Loop
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-redo fa-2x text-muted mb-3"></i>
+                    <p class="text-muted mb-0">No loops created yet</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="col-lg-6 mb-4">
+        <div class="card p-4 h-100 animate__animated animate__fadeInUp animate__delay-2s">
+            <h5 class="mb-4">
+                <i class="fas fa-sticky-note me-2 text-warning"></i>Notes
+            </h5>
+            <form method="POST" action="{{ url_for('audio_detail', audio_id=audio.id) }}" class="mb-4">
+                <div class="mb-3">
+                    <label class="form-label">Timestamp (seconds)</label>
+                    <input type="number" step="0.01" class="form-control" name="timestamp" placeholder="0.00" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Note</label>
+                    <textarea class="form-control" name="text" placeholder="Add your note here..." rows="3" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-warning w-100">
+                    <i class="fas fa-plus me-2"></i>Add Note
+                </button>
+            </form>
+            
+            <h6 class="mb-3">
+                <i class="fas fa-list me-2"></i>Your Notes
+            </h6>
+            {% if notes %}
+                <div class="list-group">
+                    {% for note in notes %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>{{ note.timestamp }}s</strong>
+                                <p class="mb-0 mt-1">{{ note.text }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-sticky-note fa-2x text-muted mb-3"></i>
+                    <p class="text-muted mb-0">No notes added yet</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+let loopStart = null;
+let loopEnd = null;
+const audio = document.getElementById('audio-player');
+
+function setLoop(start, end) {
+    loopStart = parseFloat(start);
+    loopEnd = parseFloat(end);
+    if (audio) {
+        audio.currentTime = loopStart;
+        audio.play();
+    }
+}
+
+audio.addEventListener('timeupdate', function() {
+    if (loopStart !== null && loopEnd !== null) {
+        if (audio.currentTime >= loopEnd) {
+            audio.currentTime = loopStart;
+        }
+    }
+});
+</script>
+{% endblock %}

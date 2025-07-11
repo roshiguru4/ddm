@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Welcome | DDM{% endblock %}
+{% block content %}
+<div class="text-center my-5">
+    <h1 class="display-2 fw-bold mb-4" style="letter-spacing:2px;">Welcome to DDM</h1>
+    <p class="lead mb-5" style="color:#222;">A minimal dance audio practice tool.<br>Upload, loop, and annotate your audio with zero distractions.</p>
+    <div class="d-flex justify-content-center gap-3 mb-5">
+        <a href="{{ url_for('register_page') }}" class="btn btn-primary btn-lg px-5 py-3">
+            <i class="fa fa-user-plus me-2"></i>Register
+        </a>
+        <a href="/login" class="btn btn-outline-light btn-lg px-5 py-3">
+            <i class="fa fa-sign-in-alt me-2"></i>Login
+        </a>
+    </div>
+    <div class="row mt-5 justify-content-center">
+        <div class="col-md-4 mb-4">
+            <div class="card p-4 text-center">
+                <i class="fa fa-upload fa-2x mb-3"></i>
+                <h5 class="fw-bold mb-2">Upload Audio</h5>
+                <p class="mb-0">Upload your MP3 dance recordings and start practicing immediately.</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card p-4 text-center">
+                <i class="fa fa-redo fa-2x mb-3"></i>
+                <h5 class="fw-bold mb-2">Loop Sections</h5>
+                <p class="mb-0">Create precise loops for specific dance sections and practice them repeatedly.</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card p-4 text-center">
+                <i class="fa fa-sticky-note fa-2x mb-3"></i>
+                <h5 class="fw-bold mb-2">Add Notes</h5>
+                <p class="mb-0">Add timestamped notes to remember important cues and choreography details.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
