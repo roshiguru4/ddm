@@ -7,6 +7,38 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     audio_files = db.relationship('AudioFile', backref='user', lazy=True)
+    team_memberships = db.relationship('TeamMember', backref='user', lazy=True)
+    team_uploads = db.relationship('TeamUpload', backref='user', lazy=True)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+class Team(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    members = db.relationship('TeamMember', backref='team', lazy=True)
+    uploads = db.relationship('TeamUpload', backref='team', lazy=True)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+class TeamMember(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+class TeamUpload(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    filename = db.Column(db.String(256), nullable=False)
+    original_filename = db.Column(db.String(256), nullable=False)
+    folder = db.Column(db.String(100), default='General')
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 

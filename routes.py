@@ -1,5 +1,5 @@
 from flask import request, jsonify, current_app, send_from_directory, render_template, redirect, url_for, session, flash
-from models import db, User, AudioFile
+from models import db, User, AudioFile, Team, TeamMember, TeamUpload
 from extensions import bcrypt
 import os
 from werkzeug.utils import secure_filename
@@ -17,6 +17,22 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             return redirect(url_for('login_page'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def team_member_required(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login_page'))
+        team_id = kwargs.get('team_id')
+        if not team_id:
+            return redirect(url_for('dashboard'))
+        membership = TeamMember.query.filter_by(team_id=team_id, user_id=session['user_id']).first()
+        if not membership:
+            flash('You are not a member of this team.', 'danger')
+            return redirect(url_for('dashboard'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -66,6 +82,128 @@ def register_routes(app):
         flash('Logged out successfully.', 'info')
         return redirect(url_for('home'))
 
+    @app.route('/teams/create', methods=['GET', 'POST'])
+    @login_required
+    def create_team():
+        if request.method == 'POST':
+            name = request.form.get('name')
+            password = request.form.get('password')
+            if not name or not password:
+                flash('Team name and password are required.', 'danger')
+                return render_template('create_team.html')
+            if Team.query.filter_by(name=name).first():
+                flash('Team name already exists.', 'danger')
+                return render_template('create_team.html')
+            pw_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+            team = Team(name=name, password_hash=pw_hash, created_by=session['user_id'])
+            db.session.add(team)
+            db.session.commit()
+            member = TeamMember(team_id=team.id, user_id=session['user_id'])
+            db.session.add(member)
+            db.session.commit()
+            flash('Team created successfully!', 'success')
+            return redirect(url_for('team_dashboard', team_id=team.id))
+        return render_template('create_team.html')
+
+    @app.route('/teams/join', methods=['GET', 'POST'])
+    @login_required
+    def join_team():
+        if request.method == 'POST':
+            name = request.form.get('name')
+            password = request.form.get('password')
+            if not name or not password:
+                flash('Team name and password are required.', 'danger')
+                return render_template('join_team.html')
+            team = Team.query.filter_by(name=name).first()
+            if not team or not bcrypt.check_password_hash(team.password_hash, password):
+                flash('Invalid team name or password.', 'danger')
+                return render_template('join_team.html')
+            existing_member = TeamMember.query.filter_by(team_id=team.id, user_id=session['user_id']).first()
+            if existing_member:
+                flash('You are already a member of this team.', 'info')
+                return redirect(url_for('team_dashboard', team_id=team.id))
+            member = TeamMember(team_id=team.id, user_id=session['user_id'])
+            db.session.add(member)
+            db.session.commit()
+            flash('Joined team successfully!', 'success')
+            return redirect(url_for('team_dashboard', team_id=team.id))
+        return render_template('join_team.html')
+
+    @app.route('/teams/<int:team_id>')
+    @team_member_required
+    def team_dashboard(team_id):
+        team = Team.query.get_or_404(team_id)
+        uploads = TeamUpload.query.filter_by(team_id=team_id).order_by(TeamUpload.uploaded_at.desc()).all()
+        folders = db.session.query(TeamUpload.folder).filter_by(team_id=team_id).distinct().all()
+        folders = [folder[0] for folder in folders]
+        return render_template('team_dashboard.html', team=team, uploads=uploads, folders=folders)
+
+    @app.route('/teams/<int:team_id>/upload', methods=['GET', 'POST'])
+    @team_member_required
+    def team_upload(team_id):
+        team = Team.query.get_or_404(team_id)
+        if request.method == 'POST':
+            if 'file' not in request.files:
+                flash('No file selected.', 'danger')
+                return redirect(url_for('team_upload', team_id=team_id))
+            file = request.files['file']
+            folder = request.form.get('folder', 'General')
+            if not file or not file.filename or not allowed_file(file.filename):
+                flash('Invalid file type. Only MP3 files are allowed.', 'danger')
+                return redirect(url_for('team_upload', team_id=team_id))
+            filename = secure_filename(file.filename or "")
+            save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+            base, ext = os.path.splitext(filename)
+            counter = 1
+            while os.path.exists(save_path):
+                filename = f"{base}_{counter}{ext}"
+                save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+                counter += 1
+            file.save(save_path)
+            upload = TeamUpload(
+                team_id=team_id,
+                user_id=session['user_id'],
+                filename=filename,
+                original_filename=file.filename,
+                folder=folder
+            )
+            db.session.add(upload)
+            db.session.commit()
+            flash('File uploaded to team successfully!', 'success')
+            return redirect(url_for('team_dashboard', team_id=team_id))
+        return render_template('team_upload.html', team=team)
+
+    @app.route('/teams/<int:team_id>/download/<int:upload_id>')
+    @team_member_required
+    def download_team_file(team_id, upload_id):
+        upload = TeamUpload.query.filter_by(id=upload_id, team_id=team_id).first_or_404()
+        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], upload.filename)
+        if not os.path.exists(file_path):
+            flash('File not found on server.', 'danger')
+            return redirect(url_for('team_dashboard', team_id=team_id))
+        from flask import send_file
+        return send_file(
+            file_path,
+            mimetype='audio/mpeg',
+            as_attachment=True,
+            download_name=upload.original_filename
+        )
+
+    @app.route('/teams/<int:team_id>/delete/<int:upload_id>', methods=['POST'])
+    @team_member_required
+    def delete_team_file(team_id, upload_id):
+        upload = TeamUpload.query.filter_by(id=upload_id, team_id=team_id).first_or_404()
+        if upload.user_id != session['user_id']:
+            flash('You can only delete your own uploads.', 'danger')
+            return redirect(url_for('team_dashboard', team_id=team_id))
+        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], upload.filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        db.session.delete(upload)
+        db.session.commit()
+        flash('File deleted successfully.', 'success')
+        return redirect(url_for('team_dashboard', team_id=team_id))
+
     @app.route('/dashboard', methods=['GET', 'POST'])
     @login_required
     def dashboard():
@@ -94,7 +232,9 @@ def register_routes(app):
             flash('File uploaded successfully!', 'success')
             return redirect(url_for('dashboard'))
         audio_files = AudioFile.query.filter_by(user_id=user_id).order_by(AudioFile.upload_date.desc()).all()
-        return render_template('dashboard.html', username=username, audio_files=audio_files)
+        user_teams = TeamMember.query.filter_by(user_id=user_id).all()
+        teams = [Team.query.get(member.team_id) for member in user_teams]
+        return render_template('dashboard.html', username=username, audio_files=audio_files, teams=teams)
 
     @app.route('/audio/<int:audio_id>', methods=['GET', 'POST'])
     @login_required
