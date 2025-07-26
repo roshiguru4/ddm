@@ -1,37 +1,43 @@
 {% extends 'base.html' %}
-{% block title %}Welcome | DDM{% endblock %}
+{% block title %}Welcome | Raas practice tool{% endblock %}
 {% block content %}
 <div class="text-center my-5">
-    <h1 class="display-2 fw-bold mb-4" style="letter-spacing:2px;">Welcome to DDM</h1>
-    <p class="lead mb-5" style="color:#222;">A minimal dance audio practice tool.<br>Upload, loop, and annotate your audio with zero distractions.</p>
+    <h1 class="display-2 fw-bold mb-4" style="letter-spacing:2px;">Welcome to Raas practice tool</h1>
+    <p class="lead mb-5" style="color:#222;">please uses this website PLEAASEE</p>
     <div class="d-flex justify-content-center gap-3 mb-5">
         <a href="{{ url_for('register_page') }}" class="btn btn-primary btn-lg px-5 py-3">
-            <i class="fa fa-user-plus me-2"></i>Register
+            Get Started
         </a>
         <a href="/login" class="btn btn-outline-light btn-lg px-5 py-3">
             <i class="fa fa-sign-in-alt me-2"></i>Login
         </a>
     </div>
-    <div class="row mt-5 justify-content-center">
-        <div class="col-md-4 mb-4">
-            <div class="card p-4 text-center">
-                <i class="fa fa-upload fa-2x mb-3"></i>
-                <h5 class="fw-bold mb-2">Upload Audio</h5>
-                <p class="mb-0">Upload your MP3 dance recordings and start practicing immediately.</p>
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-3 mb-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body text-center">
+                    <i class="fas fa-upload fa-2x mb-3 text-primary"></i>
+                    <h5 class="card-title mb-2">Upload</h5>
+                    <p class="card-text">Add your audio</p>
+                </div>
             </div>
         </div>
-        <div class="col-md-4 mb-4">
-            <div class="card p-4 text-center">
-                <i class="fa fa-redo fa-2x mb-3"></i>
-                <h5 class="fw-bold mb-2">Loop Sections</h5>
-                <p class="mb-0">Create precise loops for specific dance sections and practice them repeatedly.</p>
+        <div class="col-md-3 mb-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body text-center">
+                    <i class="fas fa-sync-alt fa-2x mb-3 text-success"></i>
+                    <h5 class="card-title mb-2">Loop</h5>
+                    <p class="card-text">Repeat sections</p>
+                </div>
             </div>
         </div>
-        <div class="col-md-4 mb-4">
-            <div class="card p-4 text-center">
-                <i class="fa fa-sticky-note fa-2x mb-3"></i>
-                <h5 class="fw-bold mb-2">Add Notes</h5>
-                <p class="mb-0">Add timestamped notes to remember important cues and choreography details.</p>
+        <div class="col-md-3 mb-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body text-center">
+                    <i class="fas fa-pencil-alt fa-2x mb-3 text-warning"></i>
+                    <h5 class="card-title mb-2">Annotate</h5>
+                    <p class="card-text">Add notes</p>
+                </div>
             </div>
         </div>
     </div>

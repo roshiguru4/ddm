@@ -241,25 +241,35 @@ def register_routes(app):
     def audio_detail(audio_id):
         user_id = session['user_id']
         audio = AudioFile.query.filter_by(id=audio_id, user_id=user_id).first_or_404()
-        if request.method == 'POST' and 'start_time' in request.form:
-            start_time = request.form.get('start_time', type=float)
-            end_time = request.form.get('end_time', type=float)
-            label = request.form.get('label', '')
-            if start_time is not None and end_time is not None:
-                loop = Loop(audiofile_id=audio.id, start_time=start_time, end_time=end_time, label=label)
-                db.session.add(loop)
-                db.session.commit()
-                flash('Loop added!', 'success')
-            return redirect(url_for('audio_detail', audio_id=audio.id))
-        if request.method == 'POST' and 'timestamp' in request.form:
-            timestamp = request.form.get('timestamp', type=float)
-            text = request.form.get('text', '')
-            if timestamp is not None and text:
-                note = Note(audiofile_id=audio.id, timestamp=timestamp, text=text)
-                db.session.add(note)
-                db.session.commit()
-                flash('Note added!', 'success')
-            return redirect(url_for('audio_detail', audio_id=audio.id))
+        if request.method == 'POST':
+            form_type = request.form.get('form_type')
+            if form_type == 'loop':
+                start_time = request.form.get('start_time', type=float)
+                end_time = request.form.get('end_time', type=float)
+                label = request.form.get('label', '')
+                if start_time is not None and end_time is not None:
+                    loop = Loop(audiofile_id=audio.id, start_time=start_time, end_time=end_time, label=label)
+                    db.session.add(loop)
+                    db.session.commit()
+                    flash('Loop added!', 'success')
+                return redirect(url_for('audio_detail', audio_id=audio.id))
+            elif form_type == 'note':
+                timestamp = request.form.get('timestamp', type=float)
+                text = request.form.get('text', '')
+                if timestamp is not None and text:
+                    note = Note(audiofile_id=audio.id, timestamp=timestamp, text=text)
+                    db.session.add(note)
+                    db.session.commit()
+                    flash('Note added!', 'success')
+                return redirect(url_for('audio_detail', audio_id=audio.id))
+            elif form_type == 'delete_note':
+                note_id = request.form.get('note_id', type=int)
+                note = Note.query.filter_by(id=note_id, audiofile_id=audio.id).first()
+                if note:
+                    db.session.delete(note)
+                    db.session.commit()
+                    flash('Note deleted!', 'success')
+                return redirect(url_for('audio_detail', audio_id=audio.id))
         loops = Loop.query.filter_by(audiofile_id=audio.id).all()
         notes = Note.query.filter_by(audiofile_id=audio.id).all()
         return render_template('audio_detail.html', audio=audio, loops=loops, notes=notes)

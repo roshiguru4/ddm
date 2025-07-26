@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Audio Details | DDM Hub{% endblock %}
+{% block title %}Audio Details | Raas practice tool{% endblock %}
 {% block content %}
 <div class="row align-items-center mb-4">
     <div class="col-md-8">
@@ -21,133 +21,249 @@
     <h5 class="mb-3">
         <i class="fas fa-play-circle me-2 text-primary"></i>Audio Player
     </h5>
-    <audio id="audio-player" controls preload="metadata" class="w-100">
-        <source src="{{ url_for('download_audio', audio_id=audio.id) }}" type="audio/mpeg">
-        <source src="{{ url_for('download_audio', audio_id=audio.id) }}" type="audio/mp3">
-        Your browser does not support the audio element.
-    </audio>
-</div>
-
-<div class="row">
-    <div class="col-lg-6 mb-4">
-        <div class="card p-4 h-100 animate__animated animate__fadeInUp animate__delay-1s">
-            <h5 class="mb-4">
-                <i class="fas fa-redo me-2 text-success"></i>Loop Controls
-            </h5>
-            <form method="POST" action="{{ url_for('audio_detail', audio_id=audio.id) }}" class="mb-4">
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Start Time (seconds)</label>
-                        <input type="number" step="0.01" class="form-control" name="start_time" placeholder="0.00" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">End Time (seconds)</label>
-                        <input type="number" step="0.01" class="form-control" name="end_time" placeholder="0.00" required>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Label (optional)</label>
-                    <input type="text" class="form-control" name="label" placeholder="e.g., Chorus, Verse, Bridge">
-                </div>
-                <button type="submit" class="btn btn-success w-100">
-                    <i class="fas fa-plus me-2"></i>Add Loop
-                </button>
-            </form>
-            
-            <h6 class="mb-3">
-                <i class="fas fa-list me-2"></i>Your Loops
-            </h6>
-            {% if loops %}
-                <div class="list-group">
-                    {% for audio_loop in loops %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>{{ audio_loop.label or 'Loop' }}</strong>
-                            <br>
-                            <small class="text-muted">{{ audio_loop.start_time }}s - {{ audio_loop.end_time }}s</small>
-                        </div>
-                        <button data-start="{{ audio_loop.start_time }}" data-end="{{ audio_loop.end_time }}" 
-                                onclick="setLoop(this.dataset.start, this.dataset.end)" 
-                                class="btn btn-warning btn-sm">
-                            <i class="fas fa-play me-1"></i>Loop
-                        </button>
-                    </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="text-center py-4">
-                    <i class="fas fa-redo fa-2x text-muted mb-3"></i>
-                    <p class="text-muted mb-0">No loops created yet</p>
-                </div>
-            {% endif %}
+    <div style="position:relative;">
+        <audio id="audio-player" controls preload="metadata" class="w-100 mb-2">
+            <source src="{{ url_for('download_audio', audio_id=audio.id) }}" type="audio/mpeg">
+            <source src="{{ url_for('download_audio', audio_id=audio.id) }}" type="audio/mp3">
+            Your browser does not support the audio element.
+        </audio>
+        <div id="progress-bar-container" style="position:relative; width:100%; height:36px;">
+            <input type="range" id="audio-progress" class="form-range mt-3" min="0" max="100" value="0" style="width:100%; position:absolute; top:12px; z-index:1;">
         </div>
-    </div>
-    
-    <div class="col-lg-6 mb-4">
-        <div class="card p-4 h-100 animate__animated animate__fadeInUp animate__delay-2s">
-            <h5 class="mb-4">
-                <i class="fas fa-sticky-note me-2 text-warning"></i>Notes
-            </h5>
-            <form method="POST" action="{{ url_for('audio_detail', audio_id=audio.id) }}" class="mb-4">
-                <div class="mb-3">
-                    <label class="form-label">Timestamp (seconds)</label>
-                    <input type="number" step="0.01" class="form-control" name="timestamp" placeholder="0.00" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Note</label>
-                    <textarea class="form-control" name="text" placeholder="Add your note here..." rows="3" required></textarea>
-                </div>
-                <button type="submit" class="btn btn-warning w-100">
-                    <i class="fas fa-plus me-2"></i>Add Note
-                </button>
-            </form>
-            
-            <h6 class="mb-3">
-                <i class="fas fa-list me-2"></i>Your Notes
-            </h6>
-            {% if notes %}
-                <div class="list-group">
-                    {% for note in notes %}
-                    <div class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <strong>{{ note.timestamp }}s</strong>
-                                <p class="mb-0 mt-1">{{ note.text }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="text-center py-4">
-                    <i class="fas fa-sticky-note fa-2x text-muted mb-3"></i>
-                    <p class="text-muted mb-0">No notes added yet</p>
-                </div>
-            {% endif %}
+        <div class="d-flex justify-content-between small text-muted mt-1">
+            <span id="current-time">0:00</span>
+            <span id="duration">0:00</span>
         </div>
     </div>
 </div>
-
+<div class="mb-4">
+    <button id="show-loop-form" class="btn btn-outline-primary btn-sm mb-2" onclick="document.getElementById('loop-form').style.display='flex';">Set Loop</button>
+    <form id="loop-form" class="row g-2 align-items-center" method="POST" action="{{ url_for('audio_detail', audio_id=audio.id) }}" style="display:none;">
+        <input type="hidden" name="form_type" value="loop">
+        <div class="col-auto">
+            <label for="loop-start" class="form-label mb-0">Start (s)</label>
+            <input type="number" step="0.01" class="form-control" id="loop-start" name="start_time" required>
+        </div>
+        <div class="col-auto">
+            <label for="loop-end" class="form-label mb-0">End (s)</label>
+            <input type="number" step="0.01" class="form-control" id="loop-end" name="end_time" required>
+        </div>
+        <div class="col-auto">
+            <input type="text" class="form-control" name="label" placeholder="Label (optional)">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-success">Save Loop</button>
+        </div>
+    </form>
+    <div id="loops-list" class="mt-2">
+        {% if loops %}
+            <h6 class="mb-2">Your Loops</h6>
+            <div class="list-group">
+                {% for audio_loop in loops %}
+                <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                    <div>
+                        <strong>{{ audio_loop.label or 'Loop' }}</strong>
+                        <span class="text-muted small ms-2">{{ audio_loop.start_time }}s - {{ audio_loop.end_time }}s</span>
+                    </div>
+                    <button class="btn btn-warning btn-sm play-loop" data-start="{{ audio_loop.start_time }}" data-end="{{ audio_loop.end_time }}">
+                        <i class="fas fa-play me-1"></i>Play
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+<div class="mb-4">
+    <form id="note-form" class="row g-2 align-items-center" method="POST" action="{{ url_for('audio_detail', audio_id=audio.id) }}">
+        <input type="hidden" name="form_type" value="note">
+        <div class="col-auto">
+            <label for="note-time" class="form-label mb-0">Time (s)</label>
+            <input type="number" step="0.01" class="form-control" id="note-time" name="timestamp" required>
+        </div>
+        <div class="col-auto">
+            <label for="note-text" class="form-label mb-0">Note</label>
+            <input type="text" class="form-control" id="note-text" name="text" required>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-warning">Add Note</button>
+        </div>
+        <div class="col-12">
+            <div id="note-error" class="text-danger small mt-1" style="display:none;"></div>
+        </div>
+    </form>
+</div>
+<div id="hidden-notes" style="display:none;">
+    {% for note in notes %}
+    <div class="note-item" data-time="{{ note.timestamp }}" data-text="{{ note.text }}" data-note-id="{{ note.id }}"></div>
+    {% endfor %}
+</div>
+<form id="delete-note-form" method="POST" action="{{ url_for('audio_detail', audio_id=audio.id) }}" style="display:none;">
+    <input type="hidden" name="form_type" value="delete_note">
+    <input type="hidden" name="note_id" id="delete-note-id">
+</form>
+<style>
+.note-marker {
+    position: absolute;
+    top: 22px;
+    width: 14px;
+    height: 14px;
+    background: #ffc107;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 2;
+    border: 2px solid #fff;
+    box-shadow: 0 0 2px #888;
+    transition: box-shadow 0.2s;
+}
+.note-marker:hover {
+    box-shadow: 0 2px 8px #ffc10799;
+}
+.note-tooltip {
+    position: absolute;
+    left: 50%;
+    top: -45px;
+    transform: translateX(-50%);
+    background: #222;
+    color: #fff;
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-size: 0.97em;
+    white-space: nowrap;
+    z-index: 10;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    box-shadow: 0 2px 8px #2228;
+}
+.note-marker:hover .note-tooltip {
+    opacity: 1;
+}
+#progress-bar-container {
+    height: 36px;
+    margin-bottom: 0.5rem;
+}
+#loop-form input, #note-form input {
+    min-width: 80px;
+}
+#loop-form, #note-form {
+    gap: 0.5rem;
+}
+</style>
 <script>
-let loopStart = null;
-let loopEnd = null;
 const audio = document.getElementById('audio-player');
-
-function setLoop(start, end) {
-    loopStart = parseFloat(start);
-    loopEnd = parseFloat(end);
-    if (audio) {
+const progress = document.getElementById('audio-progress');
+const currentTimeEl = document.getElementById('current-time');
+const durationEl = document.getElementById('duration');
+function formatTime(s) {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+audio.addEventListener('loadedmetadata', () => {
+    progress.max = audio.duration;
+    durationEl.textContent = formatTime(audio.duration);
+    renderNoteMarkers();
+});
+audio.addEventListener('timeupdate', () => {
+    progress.value = audio.currentTime;
+    currentTimeEl.textContent = formatTime(audio.currentTime);
+});
+progress.addEventListener('input', () => {
+    audio.currentTime = progress.value;
+});
+let loopStart = null, loopEnd = null, loopActive = false;
+document.querySelectorAll('.play-loop').forEach(btn => {
+    btn.onclick = function() {
+        loopStart = parseFloat(this.dataset.start);
+        loopEnd = parseFloat(this.dataset.end);
+        loopActive = true;
         audio.currentTime = loopStart;
         audio.play();
-    }
-}
-
-audio.addEventListener('timeupdate', function() {
-    if (loopStart !== null && loopEnd !== null) {
-        if (audio.currentTime >= loopEnd) {
+    };
+});
+audio.addEventListener('timeupdate', () => {
+    if (loopActive && loopStart !== null && loopEnd !== null) {
+        if (audio.currentTime > loopEnd) {
             audio.currentTime = loopStart;
         }
     }
 });
+function renderNoteMarkers() {
+    const container = document.getElementById('progress-bar-container');
+    container.querySelectorAll('.note-marker, .note-tooltip').forEach(e => e.remove());
+    const notes = Array.from(document.querySelectorAll('.note-item')).map(el => ({
+        time: parseFloat(el.dataset.time),
+        text: el.dataset.text,
+        id: el.dataset.noteId
+    }));
+    if (!audio.duration) return;
+    notes.forEach(note => {
+        const percent = note.time / audio.duration;
+        const marker = document.createElement('div');
+        marker.className = 'note-marker';
+        marker.style.left = (percent * 100) + '%';
+        marker.dataset.noteId = note.id;
+        const tooltip = document.createElement('div');
+        tooltip.className = 'note-tooltip';
+        tooltip.style.left = (percent * 100) + '%';
+        tooltip.innerHTML =
+            `<span>${formatTime(note.time)} — ${note.text}</span> ` +
+            `<button class='delete-note-btn' data-note-id='${note.id}' style='background:none;border:none;color:#ff5c5c;font-size:1.1em;cursor:pointer;margin-left:8px;' title='Delete'>&#10006;</button>`;
+        tooltip.style.opacity = 0;
+        tooltip.style.pointerEvents = 'auto';
+        let overMarker = false, overTooltip = false;
+        function showTooltip() {
+            tooltip.style.opacity = 1;
+        }
+        function hideTooltip() {
+            if (!overMarker && !overTooltip) tooltip.style.opacity = 0;
+        }
+        marker.addEventListener('mouseenter', () => {
+            overMarker = true;
+            showTooltip();
+        });
+        marker.addEventListener('mouseleave', () => {
+            overMarker = false;
+            setTimeout(hideTooltip, 100);
+        });
+        tooltip.addEventListener('mouseenter', () => {
+            overTooltip = true;
+            showTooltip();
+        });
+        tooltip.addEventListener('mouseleave', () => {
+            overTooltip = false;
+            setTimeout(hideTooltip, 100);
+        });
+        container.appendChild(marker);
+        container.appendChild(tooltip);
+    });
+    container.querySelectorAll('.delete-note-btn').forEach(btn => {
+        btn.onclick = function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            const noteId = this.getAttribute('data-note-id');
+            document.getElementById('delete-note-id').value = noteId;
+            document.getElementById('delete-note-form').submit();
+        };
+    });
+}
+document.addEventListener('DOMContentLoaded', renderNoteMarkers);
+const noteForm = document.getElementById('note-form');
+const noteTimeInput = document.getElementById('note-time');
+const noteError = document.getElementById('note-error');
+noteForm.onsubmit = function(e) {
+    if (audio.duration && parseFloat(noteTimeInput.value) > audio.duration) {
+        e.preventDefault();
+        noteError.textContent = 'Note time cannot exceed audio length (' + formatTime(audio.duration) + ')';
+        noteError.style.display = 'block';
+        noteTimeInput.classList.add('is-invalid');
+        return false;
+    } else {
+        noteError.style.display = 'none';
+        noteTimeInput.classList.remove('is-invalid');
+    }
+};
 </script>
 {% endblock %}
